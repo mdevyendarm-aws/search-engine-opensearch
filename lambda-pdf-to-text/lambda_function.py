@@ -62,3 +62,4 @@ def extract_content(event):
     s3client.put_object(Bucket=targetBucket, Key=key+".txt", Body=content)
 
     print('All done, returning from extract content method')
+    print('Its working perferct')
