@@ -16,4 +16,4 @@ Resources:
         Variables:
           TARGET_BUCKET: my-search-intermediate-e3
       Layers:
-        - arn:aws:lambda:us-east-2:998956253504:layer:pypdf-layer:2'
+        - 'arn:aws:lambda:us-east-2:998956253504:layer:pypdf-layer:2'
