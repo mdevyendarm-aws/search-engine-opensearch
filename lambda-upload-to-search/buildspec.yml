@@ -6,8 +6,6 @@ phases:
   build:
     commands:
       - aws cloudformation package --template-file lambda-upload-to-search/upload-to-search.yaml --s3-bucket my-search-artifacts-e3 --output-template-file upload.yaml
-
-
 artifacts:
   type: zip
   files:
