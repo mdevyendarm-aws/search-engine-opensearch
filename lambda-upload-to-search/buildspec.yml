@@ -1,25 +1,15 @@
 version: 0.2
-
 phases:
   install:
     runtime-versions:
       python: 3.10
-
   build:
     commands:
-      - echo "Go to upload lambda folder"
-      - cd lambda-upload-to-search
-
-      - echo "Install python dependencies into the CodeUri folder"
-      - python3 -m pip install --upgrade pip
-      - python3 -m pip install -r requirements.txt -t .
-
-      - echo "Back to repo root and package the SAM template"
-      - cd ..
       - aws cloudformation package --template-file lambda-upload-to-search/upload-to-search.yaml --s3-bucket my-search-artifacts-e3 --output-template-file upload.yaml
+
 
 artifacts:
   type: zip
   files:
-    - lambda-upload-to-search/upload-to-search.yaml
+    - upload-to-search.yaml
     - upload.yaml
