@@ -9,5 +9,4 @@ phases:
 artifacts:
   type: zip
   files:
-    - upload-to-search.yaml
     - upload.yaml
