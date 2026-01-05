@@ -1,82 +1,65 @@
-import boto3
-import requests
-from requests_aws4auth import AWS4Auth
-import base64
-import urllib.parse
 import json
-
-region = 'us-east-2'
-service = 'es'
-credentials = boto3.Session().get_credentials()
-awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service, session_token=credentials.token)
-host = 'https://vpc-search-engine-domain-hmo37saadymj7nhpztaqi2uau4.us-east-2.es.amazonaws.com'
-index = 'mygoogle'
-url = host + '/' + index + '/_search'
-def get_from_Search(query):
-    
-    headers = { "Content-Type": "application/json" }
-
-    r = requests.get(url, auth=awsauth, headers=headers, data=json.dumps(query))
-
-    response = {
-        "statusCode": 200,
-        "headers": {
-            "Access-Control-Allow-Origin": '*'
-        },
-        "isBase64Encoded": False
-    }
-
-    response['body'] = r.text
-    body=r.text
-    response_json=json.dumps(body);
-    return body
-
+import boto3
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 
 def lambda_handler(event, context):
+    # 1. Get the search term from the frontend request
+    # This matches the "searchTerm" key sent by your search-page.py
     try:
-        print("Event is",event)
-        response = {
-        "statusCode": 200, "statusDescription": "200 OK", "isBase64Encoded": False,
-        "headers": { "Content-Type": "application/json" }
-        }
-        encBodyData = event['body']
-        bodyData = base64.b64decode(encBodyData)
-        encFormData = bodyData.decode('utf-8')
-        formDict = urllib.parse.parse_qs(encFormData)
-        term = formDict.get('searchTerm')
-        print("Term:", term)
-        print("Type of term", type(term))
-        print("Term[0]:", term[0])
-        query = {
-        "size": 25,
+        if event.get('body'):
+            body = json.loads(event['body'])
+            search_term = body.get('searchTerm', '*')
+        else:
+            search_term = '*'
+    except Exception:
+        search_term = '*'
+
+    # 2. Configuration for your specific OpenSearch VPC domain
+    host = 'vpc-search-engine-domain-hmo37saadymj7nhpztaqi2uau4.us-east-2.es.amazonaws.com'
+    region = 'us-east-2'
+    service = 'es'
+    
+    # Authenticate using the Lambda's IAM Role
+    credentials = boto3.Session().get_credentials()
+    auth = AWSV4SignerAuth(credentials, region, service)
+
+    # 3. Create the OpenSearch client
+    client = OpenSearch(
+        hosts=[{'host': host, 'port': 443}],
+        http_auth=auth,
+        use_ssl=True,
+        verify_certs=True,
+        connection_class=RequestsHttpConnection
+    )
+
+    # 4. Define the search query
+    # We use 'mygoogle' as the index and capitalized field names
+    index_name = 'mygoogle'
+    query = {
+        "size": 10,
         "query": {
             "multi_match": {
-                "query": term[0],
-                "fields": ["Title","Author", "Date", "Body"]
+                "query": search_term,
+                "fields": ["Title", "Body", "Summary"]
             }
-            },
-            "fields": ["Title","Author","Date","Summary"]
         }
-        print("Sending query to Opensearch")
-        response = get_from_Search(query)
-        response_json = json.loads(response)
-        print("Response JSON is ", json.dumps(response_json))
-        author = response_json["hits"]["hits"][0]["_source"]["Author"]
-        date = response_json["hits"]["hits"][0]["_source"]["Date"]
-        body = response_json["hits"]["hits"][0]["_source"]["Body"]
-        print("Author is ", author)
-        print("Date is ",date)
-        print("Body is", body)
-        final_response = response_json["hits"]["hits"]
-        print("Final response is ", json.dumps(final_response))
-        return final_response
-            
-    
+    }
+
+    # 5. Execute the search
+    try:
+        response = client.search(body=query, index=index_name)
+        # Pull the actual document data from the hits
+        results = [hit['_source'] for hit in response['hits']['hits']]
     except Exception as e:
-        print("Exception is", str(e))
-        respData = {}
-        respData['status'] = False;
-        respData['message'] = str(e);
-        response['statusCode'] = 500;
-        response['body'] = json.dumps(respData);
-        return response
+        print(f"Search Error: {str(e)}")
+        results = []
+
+    # 6. Return the response in the format HTTP API Gateway requires
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({"results": results})
+    }
