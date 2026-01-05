@@ -3,27 +3,33 @@ import boto3
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 
 def lambda_handler(event, context):
-    # 1. Get the search term from the frontend request
-    # This matches the "searchTerm" key sent by your search-page.py
+    print(f"Full Event: {json.dumps(event)}") # This helps you debug in CloudWatch
+    
+    # 1. Flexible Search Term Parsing
+    search_term = "*"
     try:
-        if event.get('body'):
+        # Check if it's a proxy integration (string body)
+        if isinstance(event.get('body'), str):
             body = json.loads(event['body'])
             search_term = body.get('searchTerm', '*')
+        # Check if it's already a dictionary
+        elif isinstance(event.get('body'), dict):
+            search_term = event['body'].get('searchTerm', '*')
+        # Fallback for direct testing
         else:
-            search_term = '*'
-    except Exception:
-        search_term = '*'
+            search_term = event.get('searchTerm', '*')
+    except Exception as e:
+        print(f"Parsing error: {e}")
 
-    # 2. Configuration for your specific OpenSearch VPC domain
+    print(f"Searching for: {search_term}")
+
+    # 2. Connection Info
     host = 'vpc-search-engine-domain-hmo37saadymj7nhpztaqi2uau4.us-east-2.es.amazonaws.com'
     region = 'us-east-2'
     service = 'es'
-    
-    # Authenticate using the Lambda's IAM Role
     credentials = boto3.Session().get_credentials()
     auth = AWSV4SignerAuth(credentials, region, service)
 
-    # 3. Create the OpenSearch client
     client = OpenSearch(
         hosts=[{'host': host, 'port': 443}],
         http_auth=auth,
@@ -32,9 +38,7 @@ def lambda_handler(event, context):
         connection_class=RequestsHttpConnection
     )
 
-    # 4. Define the search query
-    # We use 'mygoogle' as the index and capitalized field names
-    index_name = 'mygoogle'
+    # 3. The Query (Note the Capitalized Fields)
     query = {
         "size": 10,
         "query": {
@@ -45,16 +49,14 @@ def lambda_handler(event, context):
         }
     }
 
-    # 5. Execute the search
     try:
-        response = client.search(body=query, index=index_name)
-        # Pull the actual document data from the hits
+        response = client.search(body=query, index='mygoogle')
+        print(f"OpenSearch Response: {response}")
         results = [hit['_source'] for hit in response['hits']['hits']]
     except Exception as e:
-        print(f"Search Error: {str(e)}")
+        print(f"OpenSearch Error: {e}")
         results = []
 
-    # 6. Return the response in the format HTTP API Gateway requires
     return {
         "statusCode": 200,
         "headers": {
