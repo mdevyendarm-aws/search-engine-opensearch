@@ -11,4 +11,4 @@ Resources:
       Description: ''
       MemorySize: 128
       Timeout: 300
-      'arn:aws:iam::998956253504:role/lambda-opensearch-role'
+      Role: 'arn:aws:iam::998956253504:role/lambda-opensearch-role'
