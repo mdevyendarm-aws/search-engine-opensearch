@@ -1,113 +1,75 @@
-# ******************************************************************************************************************
-# Author - Nirmallya Mukherjee
-# Note - this code is provided as is for education purposes and does not carry any warranty.
-#        You can use this code in any way you like at your own risk
-# ******************************************************************************************************************
+import json
 
-def searchhome():
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<title>My Profile</title>
-	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-	<style>
-		img {
-			border: 1px solid #000;
-            float: left;
-		}
-		.results {
-			width: 80%;
-			border: 1px white;
-			background-color: white;
-			margin: auto;
-		}
-		.blank {
-			width: 80%;
-			height: 50px;
-			border: 1px white;
-			background-color: white;
-			margin: auto;
-		}
-	</style>
-</head>
+def lambda_handler(event, context):
+    """
+    This function serves the Search Engine User Interface (HTML).
+    It is triggered by the root path ('/') of your HTTP API.
+    """
+    
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Serverless Search Engine</title>
+        <style>
+            body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f4f4f9; }
+            .search-container { text-align: center; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 600px; }
+            input[type="text"] { width: 70%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+            button { padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 16px; }
+            button:hover { background-color: #0056b3; }
+            #results { margin-top: 20px; text-align: left; width: 100%; max-height: 300px; overflow-y: auto; }
+            .result-item { padding: 10px; border-bottom: 1px solid #eee; }
+        </style>
+    </head>
+    <body>
+        <div class="search-container">
+            <h1>Search Engine</h1>
+            <input type="text" id="query" placeholder="Enter search term...">
+            <button onclick="runSearch()">Search</button>
+            <div id="results"></div>
+        </div>
 
-<body>
+        <script>
+            async function runSearch() {
+                const query = document.getElementById('query').value;
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = 'Searching...';
 
-	<nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
-	  <a id="home" class="navbar-brand">Search Page</a>
-	  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-		<span class="navbar-toggler-icon"></span>
-	  </button>
-	  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-	  </div>
-	</nav>
-	<div class="row" style="margin-top:100px;">
-		<div class="col-md-2"></div>
-		<div class="col-md-8 border" style="padding:25px;">
-			<h2 class="text-center" style="font-weight:bold; font-family:'Courier New', monospace;"> Search Page</h2>
-			<form name="searchForm" method="post" id="searchForm" action="#">
-			  <div class="form-group">
-				<label for="fullName">Enter Search Terms</label>
-				<input type="text" class="form-control" id="searchTerm" name="searchTerm" placeholder="Search Term">
-			  </div>
-			 
-			  <button id="btn_Submit" type="submit" class="btn btn-primary">Submit</button>
-			  
-			</form>
-		<div id="results" class="results"></div>
-		</div>
-		<div class="col-md-2"></div>
- 
-	</div>
-	<footer class="page-footer font-small fixed-bottom bg-dark">
-	  <div class="footer-copyright text-center text-white py-3"> © Powered by:
-		<a class="text-white" href="http://www.pointernext.com/">pointernext.com </a>
-	  </div>
-	</footer>
+                try {
+                    // This calls the /search route you created in API Gateway
+                    const response = await fetch('/search', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ "searchTerm": query })
+                    });
 
-	<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
-	<script>
+                    const data = await response.json();
+                    
+                    if (data.results && data.results.length > 0) {
+                        resultsDiv.innerHTML = data.results.map(item => 
+                            `<div class="result-item">${JSON.stringify(item)}</div>`
+                        ).join('');
+                    } else {
+                        resultsDiv.innerHTML = 'No results found.';
+                    }
+                } catch (error) {
+                    resultsDiv.innerHTML = 'Error fetching results. Check CORS or API logs.';
+                    console.error('Search error:', error);
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
-		$(document).ready(function() {
-			$("#home").attr('href', '/');
-			$("#searchForm").attr('action', '/search');
-		});
-
-		$("#searchForm").submit(function(e) {
-			console.log('The form will now be submitted.');
-			$('#results').empty();
-			e.preventDefault();
-			var form = $(this);
-			var url = form.attr('action');
-			$.ajax({
-				type: "POST", url: url,
-				data: form.serialize(),
-				success: function(resp) {
-					console.log(resp);
-					console.log("Successful search");
-					$.each(resp, function(key, item)
-					{
-						let title = item.fields.Title;
-						let author = item.fields.Author;
-						let date = item.fields.Date;
-						let summary = item.fields.Summary;
-						$('#results').append("<br>Title : " + title);
-						$('#results').append("<br>Author : " + author);
-						$('#results').append("<br>Date : " + date);
-						$('#results').append("<br>Summary : " + summary);
-						$('#results').append("<br>Score : " + item._score);
-						$('#results').append("<br><br>");
-            		});
-        		},
-				error: function (resp) {
-					console.log(resp);
-					$('#results').append("<br>No results found");
-				},
-        	});
-		});
-	</script>
-</body>
-</html>
-"""
+    # MANDATORY: HTTP APIs require a dictionary return with these keys
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "text/html",
+            "Access-Control-Allow-Origin": "*"  # Enables basic CORS support
+        },
+        "body": html_content
+    }
