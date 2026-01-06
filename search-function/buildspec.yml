@@ -1,0 +1,14 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.10
+  build:
+    commands:
+      - aws cloudformation package --template-file search-function/search-gateway.yaml --s3-bucket my-search-artifacts-e3 --output-template-file gateway.yaml
+
+artifacts:
+  type: zip
+  files:
+    - search-gateway.yaml
+    - gateway.yaml
