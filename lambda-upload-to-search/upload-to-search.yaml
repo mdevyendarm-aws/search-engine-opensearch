@@ -10,4 +10,5 @@ Resources:
       CodeUri: .
       Description: ''
       MemorySize: 512
-      Role: 'arn:aws:iam::998956253504:role/upload-to-search-role-ugv1557e'
+      Timeout: 900
+      Role: 'arn:aws:iam::998956253504:role/service-role/upload-to-search-role-ugv1557e'
